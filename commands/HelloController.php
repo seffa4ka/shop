@@ -7,6 +7,7 @@
 
 namespace app\commands;
 
+use app\models\User;
 use yii\console\Controller;
 use yii\console\ExitCode;
 
@@ -30,5 +31,25 @@ class HelloController extends Controller
         echo $message . "\n";
 
         return ExitCode::OK;
+    }
+
+    /**
+     * @throws \yii\base\Exception
+     */
+    public function actionUserCreate()
+    {
+        $user = new User();
+        $user->name = 'test';
+        $user->role = 'manager';
+        $user->email = 'adm@mail.ru';
+        $user->setPassword('123123');
+        $user->ts_create = time();
+        if ($user->save()) {
+            return ExitCode::OK;
+        } else {
+            var_dump($user->errors);
+
+            return ExitCode::DATAERR;
+        }
     }
 }
