@@ -2,38 +2,74 @@
 
 namespace app\models;
 
-class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
+use Yii;
+use yii\db\ActiveRecord;
+use yii\web\IdentityInterface;
+use yii\base\NotSupportedException;
+//use yii\helpers\ArrayHelper;
+//use yii\helpers\Url;
+//use yii\helpers\Json;
+
+/**
+ * This is the model class for table "users".
+ *
+ * @property int $id
+ * @property string $name
+ * @property string $role
+ * @property string $email
+ * @property string $password
+ * @property int $ts_create
+ *
+ * @property Messenger[] $messengers
+ * @property Orders[] $orders
+ */
+class User extends ActiveRecord implements IdentityInterface
 {
-    public $id;
-    public $username;
-    public $password;
-    public $authKey;
-    public $accessToken;
+    /**
+     * {@inheritdoc}
+     */
+    public static function tableName()
+    {
+        return 'users';
+    }
 
-    private static $users = [
-        '100' => [
-            'id' => '100',
-            'username' => 'admin',
-            'password' => 'admin',
-            'authKey' => 'test100key',
-            'accessToken' => '100-token',
-        ],
-        '101' => [
-            'id' => '101',
-            'username' => 'demo',
-            'password' => 'demo',
-            'authKey' => 'test101key',
-            'accessToken' => '101-token',
-        ],
-    ];
+    /**
+     * {@inheritdoc}
+     */
+    public function rules()
+    {
+        return [
+            [['name', 'role', 'email', 'password', 'ts_create'], 'required'],
+            [['role'], 'string'],
+            [['ts_create'], 'integer'],
+            [['name'], 'string', 'max' => 45],
+            [['email'], 'string', 'max' => 255],
+            [['password'], 'string', 'max' => 128],
+            [['email'], 'unique'],
+        ];
+    }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function attributeLabels()
+    {
+        return [
+            'id' => 'ID',
+            'name' => 'Name',
+            'role' => 'Role',
+            'email' => 'Email',
+            'password' => 'Password',
+            'ts_create' => 'Ts Create',
+        ];
+    }
 
     /**
      * {@inheritdoc}
      */
     public static function findIdentity($id)
     {
-        return isset(self::$users[$id]) ? new static(self::$users[$id]) : null;
+        return static::findOne($id);
     }
 
     /**
@@ -41,30 +77,7 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
      */
     public static function findIdentityByAccessToken($token, $type = null)
     {
-        foreach (self::$users as $user) {
-            if ($user['accessToken'] === $token) {
-                return new static($user);
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Finds user by username
-     *
-     * @param string $username
-     * @return static|null
-     */
-    public static function findByUsername($username)
-    {
-        foreach (self::$users as $user) {
-            if (strcasecmp($user['username'], $username) === 0) {
-                return new static($user);
-            }
-        }
-
-        return null;
+        throw new NotSupportedException('"findIdentityByAccessToken" is not implemented.');
     }
 
     /**
@@ -80,7 +93,7 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
      */
     public function getAuthKey()
     {
-        return $this->authKey;
+        throw new NotSupportedException('"getAuthKey" is not implemented.');
     }
 
     /**
@@ -88,7 +101,7 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
      */
     public function validateAuthKey($authKey)
     {
-        return $this->authKey === $authKey;
+        throw new NotSupportedException('"validateAuthKey" is not implemented.');
     }
 
     /**
@@ -99,6 +112,44 @@ class User extends \yii\base\BaseObject implements \yii\web\IdentityInterface
      */
     public function validatePassword($password)
     {
-        return $this->password === $password;
+        return Yii::$app->security->validatePassword($password, $this->password);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getMessengers()
+    {
+        return $this->hasMany(Messenger::class, ['users_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getOrders()
+    {
+        return $this->hasMany(Order::class, ['users_id' => 'id']);
+    }
+
+    /**
+     * Find by email.
+     *
+     * @param $email
+     * @return null|static
+     */
+    public static function findByEmail($email)
+    {
+        return static::findOne(['email' => $email]);
+    }
+
+    /**
+     * Generates password hash from password and sets it to the model
+     *
+     * @param string $password
+     * @throws \yii\base\Exception
+     */
+    public function setPassword($password)
+    {
+        $this->password = Yii::$app->security->generatePasswordHash($password);
     }
 }
